@@ -24,7 +24,7 @@ int main(void) {
     init_glfw();
 
     // Create GLFW window
-    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Mandelbulb Demo", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Graphics Demo", NULL, NULL);
     if (!window) {
         glfwTerminate();
         fprintf(stderr, "fatal error: Failed to create GLFW window\n");
