@@ -4,7 +4,7 @@ The C code is boilerplate to run the OpenGL. The raymarching magic occurs by dra
 
 ## Shadertoy
 
-The demo is also displayed on shadertoy.
+The demo is also displayed on shadertoy.<br>
 It can be accessed [here](https://www.shadertoy.com/view/MtycDV).
 
 ## Screenshot
