@@ -7,30 +7,36 @@ uniform float iTime;
 
 #define fragCoord (gl_FragCoord.xy)
 
+// Math constants
 #define M_PI 3.1415926535897932384626433832795
-
 #define EPSILON 0.01f
 
-#define MAX_STEPS 256
+// Raymarching constants
+#define MAX_STEPS 300
 #define MAX_DIST 100
 #define MAX_REFLECTION_DEPTH 5
+#define FOV (M_PI / 2) // In radians
 
+// Size of a checkerboard tile
 #define CHECKERBOARD_TILE_SIZE 1
 
+// Collision IDs
 #define SPHERE 0
 #define PLANE 1
 
+// Signed-distance function of a sphere
 float sphereSDF(in vec3 pos, in float radius, in vec3 center) {
     return length(pos + center) - radius;
 }
 
+// Signed-distance function of a plane
 float planeSDF(in vec3 pos, in vec4 normal) {
     return dot(pos, normal.xyz) + normal.w;
 }
 
-// Version which tells you what you collide with
+// SDF of scene which tells you what you collide with
 float sceneSDF(in vec3 pos, out int collision_id) {
-    float d_sphere = sphereSDF(pos, 1.0, vec3(0, 0, 0));
+    float d_sphere = sphereSDF(pos, 1.0, vec3(0, 0.3 * sin(iTime), 0));
     float d_plane = planeSDF(pos, vec4(0.0, 1.0, 0.0, 2.0));
 
     if (d_sphere <= d_plane) {
@@ -42,12 +48,13 @@ float sceneSDF(in vec3 pos, out int collision_id) {
     }
 }
 
-// Version which doesn't tell you what you collide with
+// SDF of scene which doesn't tell you what you collide with
 float sceneSDF(in vec3 pos) {
     int collision_id;
     return sceneSDF(pos, collision_id);
 }
 
+// Estimate the normal off of the scene sdf
 vec3 estimateNormal(in vec3 p) {
     return normalize(vec3(
             sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
@@ -56,6 +63,7 @@ vec3 estimateNormal(in vec3 p) {
         ));
 }
 
+// The blinn-phone BRDF
 vec3 blinnPhongContribForLight(in vec3 diffuse_color, in vec3 specular_color, in float alpha, in vec3 p, in vec3 eye,
                           in vec3 lightPos, in vec3 lightIntensity, in float attenuation) {
     vec3 N = estimateNormal(p);
@@ -96,16 +104,18 @@ vec3 blinnPhongIllumination(vec3 diffuse_color,
     return color;
 }
 
+// Determine the unit vector to march along
 vec3 rayDirection(in float fieldOfView, in vec2 size, in vec2 frag_coord) {
     vec2 xy = frag_coord - size / 2.0;
     float z = size.y / tan(fieldOfView / 2.0);
     return normalize(vec3(xy, -z));
 }
 
-float sigmoid(float x) {
-    return x / (1 + abs(x));
-}
-
+// The raymarching algorithm
+// -------------------------
+// March along a ray by the distance to the nearest object
+// until that distance approaches zero (collision)
+// or it exceeds the max steps or max distance
 float raymarch(in vec3 eye, in vec3 ray_dir, out int collision_id) {
     float depth = 0.0;
     for (int i = 0; i < MAX_STEPS; ++i) {
@@ -121,21 +131,9 @@ float raymarch(in vec3 eye, in vec3 ray_dir, out int collision_id) {
     return MAX_DIST;
 }
 
-float raymarch(in vec3 eye, in vec3 ray_dir) {
-    float depth = 0.0;
-    for (int i = 0; i < MAX_STEPS; ++i) {
-        float d = sceneSDF(eye + depth * ray_dir);
-        if (d < EPSILON) {
-            return depth;
-        }
-        depth += d;
-        if (depth >= MAX_DIST) {
-            return MAX_DIST;
-        }
-    }
-    return MAX_DIST;
-}
-
+// Calculate penumbra shadows for free
+// Algorithm sourced from Inigo Quilez
+// URL: https://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm
 float shadow(in vec3 ray_origin, in vec3 ray_direction, float min_t, float max_t, float k) {
     float res = 1.0;
     for (float t = min_t; t < max_t; ) {
@@ -149,13 +147,17 @@ float shadow(in vec3 ray_origin, in vec3 ray_direction, float min_t, float max_t
     return res;
 }
 
+// Determine what tile the point falls in on the checkerboard
+// to colour the tile
 vec3 checkerboard_color(vec3 p) {
-    // Checkerboard pattern
-    if ((mod(p.x,(CHECKERBOARD_TILE_SIZE * 2)) < CHECKERBOARD_TILE_SIZE &&
-        mod(p.z,(CHECKERBOARD_TILE_SIZE * 2)) > CHECKERBOARD_TILE_SIZE) ||
+    vec3 pos = vec3(p.x, p.y, p.z - (0.7 * iTime));
 
-        (mod(p.x,(CHECKERBOARD_TILE_SIZE * 2)) > CHECKERBOARD_TILE_SIZE &&
-        mod(p.z,(CHECKERBOARD_TILE_SIZE * 2)) < CHECKERBOARD_TILE_SIZE)) {
+    // Checkerboard pattern
+    if ((mod(pos.x,(CHECKERBOARD_TILE_SIZE * 2)) < CHECKERBOARD_TILE_SIZE &&
+        mod(pos.z,(CHECKERBOARD_TILE_SIZE * 2)) > CHECKERBOARD_TILE_SIZE) ||
+
+        (mod(pos.x,(CHECKERBOARD_TILE_SIZE * 2)) > CHECKERBOARD_TILE_SIZE &&
+        mod(pos.z,(CHECKERBOARD_TILE_SIZE * 2)) < CHECKERBOARD_TILE_SIZE)) {
             // White tile
             return vec3(0.9, 0.9, 0.9);
     } else {
@@ -164,7 +166,11 @@ vec3 checkerboard_color(vec3 p) {
     }
 }
 
+// Main function
+// When an object is hit, perform the math magic to colour it
 vec3 calculate_color(vec3 eye, vec3 p, int collision_id, vec3 ray_dir) {
+
+    // Determine / define blinn-phong calculation components
     vec3 ambient_color = vec3(0.2, 0.2, 0.2);
     vec3 diffuse_color;
     if (collision_id == SPHERE) {
@@ -172,7 +178,6 @@ vec3 calculate_color(vec3 eye, vec3 p, int collision_id, vec3 ray_dir) {
     } else if (collision_id == PLANE) {
         diffuse_color = checkerboard_color(p);
     }
-
     vec3 specular_color = vec3(1.0, 1.0, 1.0);
     float shininess = 20.0;
 
@@ -195,7 +200,7 @@ vec3 calculate_color(vec3 eye, vec3 p, int collision_id, vec3 ray_dir) {
                                     lightPos, lightIntensity, p, eye) * shadow_factor;
     color += blinn_phong_contribution;
 
-    // Reflect off of the sphere
+    // Reflect light off of the sphere
     if (collision_id == SPHERE) {
         vec3 reflection_dir = ray_dir - (2 * dot(ray_dir, estimateNormal(p))
                                 * estimateNormal(p));
@@ -205,46 +210,48 @@ vec3 calculate_color(vec3 eye, vec3 p, int collision_id, vec3 ray_dir) {
         float dist = raymarch(p + reflection_dir, reflection_dir, collision_id);
 
         vec3 reflected_color;
+        vec3 reflected_p = p + dist * reflection_dir;
         if (dist > MAX_DIST - EPSILON) {
             // Nothing was hit
-            reflected_color = vec3(0, 0, 0);
+            // Create nice gradient effect for the background
+            reflected_color = vec3(0.0, .8-sqrt(reflected_p.y / 30), .8-sqrt(reflected_p.y / 30));
         } else {
-            // Position reflected onto surface of plane from sphere
-            vec3 reflected_p = p + dist * reflection_dir;
 
             // Compute if the point of calculation is obstructed by any objects from the light
             vec3 shadow_ray = normalize(lightPos - reflected_p);
-            float shadow_factor = shadow(p + shadow_ray, shadow_ray, 0.0, MAX_DIST, 8);
+            float shadow_factor = shadow(reflected_p + shadow_ray, shadow_ray, 0.0, MAX_DIST, 8);
 
+            // Add blinn-phong brdf to reflection
             reflected_color = ambient_light * ambient_color;
             reflected_color += blinnPhongIllumination(checkerboard_color(reflected_p), specular_color, shininess, 0.5,
                                                      lightPos, lightIntensity, p, eye)
                                                      * shadow_factor;
         }
 
+        // Lerp the reflection with the sphere's original colour
         color = mix(color, reflected_color, 0.2);
     }
-
 
     return color;
 
 }
 
 void main() {
-    vec3 ray_dir = rayDirection(M_PI / 2, iResolution.xy, fragCoord);
+    vec3 ray_dir = rayDirection(FOV, iResolution.xy, fragCoord);
     vec3 eye = vec3(0, 0, 5);
 
     int collision_id;
     float dist = raymarch(eye, ray_dir, collision_id);
 
+    // The closest point on the surface to the eyepoint along the view ray
+    vec3 p = eye + dist * ray_dir;
+
     if (dist > MAX_DIST - EPSILON) {
         // Nothing was hit
-        vec2 uv = (2.*fragCoord.xy - iResolution.xy) / iResolution.y;
-        out_color = vec4(0.0, .8-sqrt(uv.y), .8-sqrt(uv.y), 1.0);
+        // Create nice gradient effect for the background
+        out_color = vec4(0.0, .8-sqrt(p.y / 30), .8-sqrt(p.y / 30), 1.0);
     } else {
         // Something was hit
-        // The closest point on the surface to the eyepoint along the view ray
-        vec3 p = eye + dist * ray_dir;
         out_color = vec4(calculate_color(eye, p, collision_id, ray_dir), 1.0);
     }
 
