@@ -13,12 +13,11 @@ uniform float iTime;
 
 // Raymarching constants
 #define MAX_STEPS 300
-#define MAX_DIST 100
-#define MAX_REFLECTION_DEPTH 5
-#define FOV (M_PI / 2) // In radians
+#define MAX_DIST 100.0
+#define FOV (M_PI / 2.0) // In radians
 
 // Size of a checkerboard tile
-#define CHECKERBOARD_TILE_SIZE 1
+#define CHECKERBOARD_TILE_SIZE 1.0
 
 // Collision IDs
 #define SPHERE 0
@@ -134,7 +133,8 @@ float raymarch(in vec3 eye, in vec3 ray_dir, out int collision_id) {
 // Calculate penumbra shadows for free
 // Algorithm sourced from Inigo Quilez
 // URL: https://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm
-float shadow(in vec3 ray_origin, in vec3 ray_direction, float min_t, float max_t, float k) {
+float shadow(in vec3 ray_origin, in vec3 ray_direction, in float min_t,
+             in float max_t, in float k) {
     float res = 1.0;
     for (float t = min_t; t < max_t; ) {
         float dist = sceneSDF(ray_origin + ray_direction * t);
@@ -153,11 +153,11 @@ vec3 checkerboard_color(vec3 p) {
     vec3 pos = vec3(p.x, p.y, p.z - (0.7 * iTime));
 
     // Checkerboard pattern
-    if ((mod(pos.x,(CHECKERBOARD_TILE_SIZE * 2)) < CHECKERBOARD_TILE_SIZE &&
-        mod(pos.z,(CHECKERBOARD_TILE_SIZE * 2)) > CHECKERBOARD_TILE_SIZE) ||
+    if ((mod(pos.x,(CHECKERBOARD_TILE_SIZE * 2.0)) < CHECKERBOARD_TILE_SIZE &&
+        mod(pos.z,(CHECKERBOARD_TILE_SIZE * 2.0)) > CHECKERBOARD_TILE_SIZE) ||
 
-        (mod(pos.x,(CHECKERBOARD_TILE_SIZE * 2)) > CHECKERBOARD_TILE_SIZE &&
-        mod(pos.z,(CHECKERBOARD_TILE_SIZE * 2)) < CHECKERBOARD_TILE_SIZE)) {
+        (mod(pos.x,(CHECKERBOARD_TILE_SIZE * 2.0)) > CHECKERBOARD_TILE_SIZE &&
+        mod(pos.z,(CHECKERBOARD_TILE_SIZE * 2.0)) < CHECKERBOARD_TILE_SIZE)) {
             // White tile
             return vec3(0.9, 0.9, 0.9);
     } else {
@@ -193,7 +193,7 @@ vec3 calculate_color(vec3 eye, vec3 p, int collision_id, vec3 ray_dir) {
 
     // Compute if the point of calculation is obstructed by any objects from the light
     vec3 shadow_ray = normalize(lightPos - p);
-    float shadow_factor = shadow(p + shadow_ray, shadow_ray, 0.0, MAX_DIST, 8);
+    float shadow_factor = shadow(p + shadow_ray, shadow_ray, 0.0, MAX_DIST, 8.0);
 
     // Add the diffuse and specular components
     vec3 blinn_phong_contribution = blinnPhongIllumination(diffuse_color, specular_color, shininess, 0.5,
@@ -202,7 +202,7 @@ vec3 calculate_color(vec3 eye, vec3 p, int collision_id, vec3 ray_dir) {
 
     // Reflect light off of the sphere
     if (collision_id == SPHERE) {
-        vec3 reflection_dir = ray_dir - (2 * dot(ray_dir, estimateNormal(p))
+        vec3 reflection_dir = ray_dir - (2.0 * dot(ray_dir, estimateNormal(p))
                                 * estimateNormal(p));
 
         // March along ray till it intersects
@@ -214,12 +214,12 @@ vec3 calculate_color(vec3 eye, vec3 p, int collision_id, vec3 ray_dir) {
         if (dist > MAX_DIST - EPSILON) {
             // Nothing was hit
             // Create nice gradient effect for the background
-            reflected_color = vec3(0.0, .8-sqrt(reflected_p.y / 30), .8-sqrt(reflected_p.y / 30));
+            reflected_color = vec3(0.0, .8-sqrt(reflected_p.y / 30.0), .8-sqrt(reflected_p.y / 30.0));
         } else {
 
             // Compute if the point of calculation is obstructed by any objects from the light
             vec3 shadow_ray = normalize(lightPos - reflected_p);
-            float shadow_factor = shadow(reflected_p + shadow_ray, shadow_ray, 0.0, MAX_DIST, 8);
+            float shadow_factor = shadow(reflected_p + shadow_ray, shadow_ray, 0.0, MAX_DIST, 8.0);
 
             // Add blinn-phong brdf to reflection
             reflected_color = ambient_light * ambient_color;
@@ -249,7 +249,7 @@ void main() {
     if (dist > MAX_DIST - EPSILON) {
         // Nothing was hit
         // Create nice gradient effect for the background
-        out_color = vec4(0.0, .8-sqrt(p.y / 30), .8-sqrt(p.y / 30), 1.0);
+        out_color = vec4(0.0, .8-sqrt(p.y / 30.0), .8-sqrt(p.y / 30.0), 1.0);
     } else {
         // Something was hit
         out_color = vec4(calculate_color(eye, p, collision_id, ray_dir), 1.0);
