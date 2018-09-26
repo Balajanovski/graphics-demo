@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.6)
-project(graphics-demo CXX C)
+project(graphics-demo C)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake-modules")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-set(CMAKE_CXX_FLAGS "-Wall")
+set(CMAKE_C_FLAGS "-Wall")
 
 find_package(GLFW 3.0.0)
 message("- GLFW Located")
@@ -44,8 +44,6 @@ add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
         ${GLFW_LIBRARIES}
-        ${FREETYPE2_LIBRARIES}
-        ${OPENAL_LIBRARY}
         )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
