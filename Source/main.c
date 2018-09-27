@@ -124,6 +124,8 @@ int main(void) {
 
         glfwSwapBuffers(window);
     }
+    
+    return 0;
 }
 
 void init_glfw() {
