@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.6)
-project(graphics-demo C)
+project(raymarcher-demo C)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake-modules")
